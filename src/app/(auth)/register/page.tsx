@@ -2,27 +2,54 @@
 import { Input } from '@/components/ui';
 import Link from 'next/link';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Register() {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const { replace } = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
 
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, username, password }),
-    });
+    try {
+      const registerRes = await fetch('http://localhost:8001/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, email, password }),
+      });
 
-    if (res.ok) {
-      window.location.href = '/dashboard';
-    } else {
-      console.error('Registration failed');
+      if (!registerRes.ok) {
+        const errorData = await registerRes.json();
+        setError(errorData.message || 'Ошибка регистрации');
+        return;
+      }
+
+      const loginRes = await fetch('http://localhost:8001/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include',
+      });
+
+      if (!loginRes.ok) {
+        const errorData = await loginRes.json();
+        setError(errorData.message || 'Ошибка при авторизации');
+        return;
+      }
+
+      replace('/dashboard')
+
+    } catch (err) {
+      setError('Произошла ошибка. Попробуйте снова.');
+      console.error(err);
     }
   };
 
